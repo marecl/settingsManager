@@ -6,7 +6,6 @@ configAP	KEYWORD2
 ssid	KEYWORD2
 ssidAP	KEYWORD2
 configIP	KEYWORD2
-configIP	KEYWORD2
 useDHCP	KEYWORD2
 useDHCP	KEYWORD2
 name	KEYWORD2
@@ -14,19 +13,25 @@ configUser	KEYWORD2
 authenticate	KEYWORD2
 beginWiFi	KEYWORD2
 beginAP	KEYWORD2
+ntpServer	KEYWORD2
 configUpdateServer	KEYWORD2
 beginOTA	KEYWORD2
 webAuthenticate	KEYWORD2
 remove	KEYWORD2
-localIP	KEYWORD2
-gatewayIP	KEYWORD2
-subnetMask	KEYWORD2
+IPAddress localIP	KEYWORD2
+IPAddress gatewayIP	KEYWORD2
+IPAddress subnetMask	KEYWORD2
+useNTP	KEYWORD2
 ssid	KEYWORD2
 ssidAP	KEYWORD2
 name	KEYWORD2
 username	KEYWORD2
+ntpServer	KEYWORD2
+lastUpdate	KEYWORD2
+timezone	KEYWORD2
 IPtoString	KEYWORD2
 stringToIP	KEYWORD2
 serialDebug	KEYWORD2
 printConfigFile	KEYWORD2
 printConfig	KEYWORD2
+readInterval	KEYWORD2

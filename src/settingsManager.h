@@ -1,20 +1,16 @@
-#include <Arduino.h>
-#include <ArduinoJson.h>
-#include <ArduinoOTA.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPUpdateServer.h>
-#include <ESP8266WebServerSecure.h>
-#include "FS.h"
+/*
+  Library which is made to hold all settings of Temperature Station
+  There is no way (I know) to make it return passwords / other sensitive data
+*/
 
 /*
   Insecure, uncomment only for debugging
   Will show every action in settingsManager including passwords
 */
-#define S_DEBUG
+//#define DEBUG_INSECURE
 
 class settingsManager {
   public:
-    settingsManager();
     settingsManager(const char*);
     ~settingsManager();
     void save();
@@ -32,6 +28,7 @@ class settingsManager {
     bool authenticate(const char*, const char*);
     bool beginWiFi();
     bool beginAP();
+    void ntpServer(const char*);
     void configUpdateServer(ESP8266WebServer*, ESP8266HTTPUpdateServer*, const char*);
     void beginOTA(uint16_t = 8266);
     bool webAuthenticate(ESP8266WebServer*);
@@ -39,20 +36,24 @@ class settingsManager {
     IPAddress localIP();
     IPAddress gatewayIP();
     IPAddress subnetMask();
+    bool useNTP;
     const char* ssid();
     const char* ssidAP();
     const char* name();
     const char* username();
+    const char* ntpServer();
+    uint32_t lastUpdate;
+    int8_t timezone;
+    uint16_t readInterval;
     String IPtoString(IPAddress);
     IPAddress stringToIP(const char*);
-#ifdef S_DEBUG
+#ifdef DEBUG_INSECURE
     void serialDebug(HardwareSerial*);
     void printConfigFile();
     void printConfig();
 #endif
 
   private:
-    void _begin(const char*);
     void setField(char*, const char*, uint8_t);
     char* _name;
     char* _ssid;
@@ -61,12 +62,13 @@ class settingsManager {
     char* _ssidap;
     char* _user;
     char* _pwd;
+    char* _ntp;
     char* _file;
     bool _dhcp;
     IPAddress _ip;
     IPAddress _gw;
     IPAddress _mask;
-#ifdef S_DEBUG
+#ifdef DEBUG_INSECURE
     void _print(const __FlashStringHelper*, const char* = NULL);
     HardwareSerial *_debug;
 #endif
