@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
+#include <stdio.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266WebServerSecure.h>
+#define FS_NO_GLOBALS
 #include "FS.h"
 #include "settingsManager.h"
 
@@ -53,7 +55,7 @@ void settingsManager::ntpServer(const char* _ntp) {
 
 void settingsManager::save() {
   SPIFFS.remove(this->_file);
-  File _toSave = SPIFFS.open(this->_file, "w");
+  fs::File _toSave = SPIFFS.open(this->_file, "w");
   _toSave.print(F("{\"SN\":\""));
   _toSave.print(this->_name);
   _toSave.print(F("\",\"SL\":\""));
@@ -139,7 +141,7 @@ bool settingsManager::load() {
 #ifdef DEBUG_INSECURE
   this->_print(F("Found file"));
 #endif
-  File _toSave = SPIFFS.open(this->_file, "r");
+  fs::File _toSave = SPIFFS.open(this->_file, "r");
   //Longest config i could create
   StaticJsonBuffer<675> _ld;
   JsonObject& _data = _ld.parseObject(_toSave);
@@ -158,9 +160,9 @@ bool settingsManager::load() {
   this->setField(this->_pass, _data["OP"], 32);
   this->setField(this->_ssidap, _data["SS"], 32);
   this->setField(this->_passap, _data["SPA"], 32);
-  this->_ip = stringToIP(_data["OI"]);
-  this->_gw = stringToIP(_data["OG"]);
-  this->_mask = stringToIP(_data["OM"]);
+  this->_ip = this->stringToIP(_data["OI"]);
+  this->_gw = this->stringToIP(_data["OG"]);
+  this->_mask = this->stringToIP(_data["OM"]);
   this->_dhcp = _data["OD"].as<bool>();
   this->useNTP = _data["UN"].as<bool>();
   this->setField(this->_ntp, _data["NS"], 32);
@@ -187,7 +189,7 @@ void settingsManager::serialDebug(HardwareSerial *_d) {
   return void();
 }
 void settingsManager::printConfigFile() {
-  File _f = SPIFFS.open(this->_file, "r");
+  fs::File _f = SPIFFS.open(this->_file, "r");
   while (_f.available()) this->_debug->write(_f.read());
   _f.close();
   return void();
@@ -461,26 +463,131 @@ void settingsManager::setField(char* _dest, const char* _src, uint8_t _size) {
   return void();
 }
 
-IPAddress settingsManager::stringToIP(const char* input) {
-  uint8_t parts[4] = {0, 0, 0, 0};
-  uint8_t part = 0;
-  for (uint8_t a = 0; a < strlen(input); a++) {
-    uint8_t b = input[a];
-    if (b == '.') {
-      part++;
-      continue;
-    }
-    parts[part] *= 10;
-    parts[part] += b - '0';
-  }
-  return IPAddress(parts[0], parts[1], parts[2], parts[3]);
+/*
+  Return reasons:
+    0 - valid key
+    1 - unprintable characters detected
+    2 - decryption error (login/password)
+    3 - invalid name
+    4 - wrong device
+    5 - token expired
+    6 - conversion error
+*/
+
+uint8_t settingsManager::validateEncryptedKey(String key, uint32_t time) {
+  return this->validateKey(this->decryptKey(key), time);
 }
 
-String settingsManager::IPtoString(IPAddress address) {
-  String out;
-  for (int z = 0; z < 4; z++) {
-    out += String(address[z]);
-    if (z < 3)out += ".";
+uint8_t settingsManager::validateKey(String key, uint32_t time) {
+#ifdef DEBUG_INSECURE
+  _debug->println(" CHECKING: " + key);
+#endif
+
+  /* Checking for invalid characters */
+  for (uint8_t a = 0; a < key.length(); a++)
+    if (33 > key[a] || key[a] > 126) return 1;
+
+  /* Validate decrypted string */
+  if (key.substring(0, 5) != "COOK+") return 2;
+
+  uint8_t start = 4;
+  uint8_t end = 4;
+
+  /* Validating name */
+  start = ++end;
+  while (key[++end] != '+');
+#ifdef DEBUG_INSECURE
+  _debug->println("\t*NAME: " + key.substring(start, end));
+#endif
+  if (end - start != strlen(this->_name)) return 3;
+  if (key.substring(start, end) != String(this->_name)) return 3;
+
+  /* Extracting timestamp */
+  start = ++end;
+  do {
+    if (key[end] < 48 || key[end] > 57) return 6;
+  } while (key[++end] != '+');
+  const uint32_t tst = strtoul(key.substring(start, end).c_str(), NULL, 0);
+#ifdef DEBUG_INSECURE
+  _debug->println("\t*TIMESTAMP: " + String(tst));
+#endif
+  if (tst == 0) return 6;
+
+  /* Validating chip ID */
+  start = ++end;
+  while (key[++end] != '+');
+#ifdef DEBUG_INSECURE
+  _debug->println("\t*CHIP ID: " + key.substring(start, end));
+#endif
+  if (key.substring(start, end) != String(ESP.getChipId(), HEX)) return 4;
+
+  /* Validating token's lifespan */
+  start = ++end;
+  do {
+    if (key[end] < 48 || key[end] > 57) return 6;
+  } while (key[++end] != '\x00');
+#ifdef DEBUG_INSECURE
+  _debug->println("\t*LIFESPAN [s]: " + key.substring(start, end));
+#endif
+  if (atol(key.substring(start, end).c_str()) == 0) return 6;
+  if (time < tst || time > tst + atol(key.substring(start, end).c_str())) return 5;
+
+  return 0;
+}
+
+String settingsManager::encryptKey(uint32_t time) {
+  String temp = "COOK+";
+  temp += String(this->_name);
+  temp += "+" + String(time);
+  temp += "+" + String(ESP.getChipId(), HEX);
+  temp += "+" + String(600);
+  String temp2 = this->generateKey(temp.length());
+  String out = "";
+  for (uint8_t a = 0; a < temp.length(); a++) {
+    out += encryptChar(temp[a], temp2[a]);
   }
+#ifdef DEBUG_INSECURE
+  _debug->println("DEC-->ENC: " + temp);
+  _debug->println("ENCRYPTED: " + out);
+#endif
   return out;
+}
+
+String settingsManager::decryptKey(String data) {
+  String temp = generateKey(data.length());
+  String out = "";
+  for (uint8_t a = 0; a < data.length(); a++) {
+    out += this->decryptChar(data[a], temp[a]);
+  }
+#ifdef DEBUG_INSECURE
+  _debug->println("ENC-->DEC: " + data);
+  _debug->println("DECRYPTED: " + out);
+#endif
+  return out;
+}
+
+String settingsManager::generateKey(uint8_t size) {
+  String temp = String(this->_pwd) + String(this->_user);
+  while (temp.length() < size) temp += temp;
+  temp.remove(size, temp.length());
+#ifdef DEBUG_INSECURE
+  _debug->println("ENC<->KEY: " + temp);
+#endif
+  return temp;
+}
+
+char settingsManager::encryptChar(char a, char k) {
+  uint8_t o = a - 33;
+  o = o + k - 33;
+  if (o > 93) o = (o % 94);
+  o += 33;
+  return o;
+}
+
+char settingsManager::decryptChar(char a, char k) {
+  int8_t o = a - k;
+  while (o < 0) o += 94;
+  if (o < 0 || o > 93) o = (o % 94);
+  o += 33;
+  return o;
 }

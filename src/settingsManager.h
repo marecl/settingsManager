@@ -45,15 +45,45 @@ class settingsManager {
     uint32_t lastUpdate;
     int8_t timezone;
     uint16_t readInterval;
-    String IPtoString(IPAddress);
-    IPAddress stringToIP(const char*);
+    uint8_t validateKey(String, uint32_t);
+    uint8_t validateEncryptedKey(String, uint32_t);
+    String encryptKey(uint32_t);
+    String decryptKey(String);
+
+    static IPAddress stringToIP(const char* input) {
+      uint8_t parts[4] = {0, 0, 0, 0};
+      uint8_t part = 0;
+      for (uint8_t a = 0; a < strlen(input); a++) {
+        uint8_t b = input[a];
+        if (b == '.') {
+          part++;
+          continue;
+        }
+        parts[part] *= 10;
+        parts[part] += b - '0';
+      }
+      return IPAddress(parts[0], parts[1], parts[2], parts[3]);
+    }
+
+    static String IPtoString(IPAddress address) {
+      String out;
+      for (int z = 0; z < 4; z++) {
+        out += String(address[z]);
+        if (z < 3)out += ".";
+      }
+      return out;
+    }
+
 #ifdef DEBUG_INSECURE
     void serialDebug(HardwareSerial*);
     void printConfigFile();
     void printConfig();
 #endif
 
-  private:
+  protected:
+    String generateKey(uint8_t);
+    char encryptChar(char, char);
+    char decryptChar(char, char);
     void setField(char*, const char*, uint8_t);
     char* _name;
     char* _ssid;
