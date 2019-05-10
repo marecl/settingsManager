@@ -1,3 +1,15 @@
+#ifndef SETTINGSMANAHER_H
+#define SETTINGSMANAHER_H
+
+#include <Arduino.h>
+#include <ArduinoJson.h>
+#include <ArduinoOTA.h>
+#include <stdio.h>
+#include <ESP8266WebServerSecure.h>
+#include <ESP8266HTTPUpdateServer.h>
+#define FS_NO_GLOBALS
+#include "FS.h"
+
 /*
   Library which is made to hold all settings of Temperature Station
   There is no way (I know) to make it return passwords / other sensitive data
@@ -11,7 +23,7 @@
 
 class settingsManager {
   public:
-    settingsManager(const char*);
+    settingsManager(const char* = NULL);
     ~settingsManager();
     void save();
     bool load();
@@ -26,7 +38,7 @@ class settingsManager {
     void name(const char*);
     void configUser(const char*, const char*);
     bool authenticate(const char*, const char*);
-    bool beginWiFi();
+    bool beginSTA();
     bool beginAP();
     void ntpServer(const char*);
     void configUpdateServer(ESP8266WebServer*, ESP8266HTTPUpdateServer*, const char*);
@@ -49,6 +61,7 @@ class settingsManager {
     uint8_t validateEncryptedKey(String, uint32_t);
     String encryptKey(uint32_t);
     String decryptKey(String);
+    uint32_t tokenLifespan;
 
     static IPAddress stringToIP(const char* input) {
       uint8_t parts[4] = {0, 0, 0, 0};
@@ -103,3 +116,4 @@ class settingsManager {
     HardwareSerial *_debug;
 #endif
 };
+#endif

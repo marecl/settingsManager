@@ -11,7 +11,7 @@ useDHCP	KEYWORD2
 name	KEYWORD2
 configUser	KEYWORD2
 authenticate	KEYWORD2
-beginWiFi	KEYWORD2
+beginSTA	KEYWORD2
 beginAP	KEYWORD2
 ntpServer	KEYWORD2
 configUpdateServer	KEYWORD2
@@ -35,3 +35,8 @@ serialDebug	KEYWORD2
 printConfigFile	KEYWORD2
 printConfig	KEYWORD2
 readInterval	KEYWORD2
+validateKey	KEYWORD2
+validateEncryptedKey	KEYWORD2
+encryptKey	KEYWORD2
+decryptKey	KEYWORD2
+tokenLifespan	KEYWORD2
