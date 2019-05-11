@@ -279,7 +279,7 @@ bool settingsManager::beginSTA() {
     return false;
   }
   //if (this->_dhcp == true)
-  //  this->configIP(this->_ip, this->_gw, this->_mask);
+  // this->configIP(this->_ip, this->_gw, this->_mask);
 #ifdef DEBUG_INSECURE
   this->_print(F("Connected to "), this->_ssid);
 #endif
@@ -466,24 +466,27 @@ void settingsManager::setField(char* _dest, const char* _src, uint8_t _size) {
 
 /*
   Return reasons:
-    0 - valid key
-    1 - unprintable characters detected
-    2 - conversion error
-    3 - invalid name
-    4 - wrong device
-    5 - token expired
+  0 - valid key
+  1 - unprintable characters detected
+  2 - conversion error
+  3 - invalid name
+  4 - wrong device
+  5 - token expired
+  6 - no input
 */
 
 /* todo: rewrite verification using indexOf */
 
-uint8_t settingsManager::validateEncryptedKey(String key, uint32_t time) {
-  return this->validateKey(this->decryptKey(key), time);
+uint8_t settingsManager::verifyEncryptedKey(String key, uint32_t time) {
+  return this->verifyKey(this->decryptKey(key), time);
 }
 
-uint8_t settingsManager::validateKey(String key, uint32_t time) {
+uint8_t settingsManager::verifyKey(String key, uint32_t time) {
 #ifdef DEBUG_INSECURE
   this->_print(F(" CHECKING: "), key.c_str());
 #endif
+
+  if (key == "") return 6;
 
   /* Checking for invalid characters */
   for (uint8_t a = 0; a < key.length(); a++)
@@ -497,7 +500,7 @@ uint8_t settingsManager::validateKey(String key, uint32_t time) {
 #ifdef DEBUG_INSECURE
   this->_print(F("\t*NAME: "), key.substring(start, end).c_str());
 #endif
-  if (end - start != strlen(this->_name)) return 3;
+  if ((uint8_t)(end - start) != strlen(this->_name)) return 3;
   if (key.substring(start, end) != String(this->_name)) return 3;
 
   /* Extracting timestamp */

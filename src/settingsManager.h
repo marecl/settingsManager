@@ -57,8 +57,8 @@ class settingsManager {
     uint32_t lastUpdate;
     int8_t timezone;
     uint16_t readInterval;
-    uint8_t validateKey(String, uint32_t);
-    uint8_t validateEncryptedKey(String, uint32_t);
+    uint8_t verifyKey(String, uint32_t);
+    uint8_t verifyEncryptedKey(String, uint32_t);
     String encryptKey(uint32_t);
     String decryptKey(String);
     uint32_t tokenLifespan;

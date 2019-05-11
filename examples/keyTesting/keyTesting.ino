@@ -46,7 +46,7 @@ void setup() {
   Serial.println(dec);
 
   Serial.print("Encrypting key:\t\t");
-  Serial.println(settings.validateEncryptedKey(enc, validityBase) == 0 ? "Pass" : "Fail");
+  Serial.println(settings.verifyEncryptedKey(enc, validityBase) == 0 ? "Pass" : "Fail");
 
   Serial.print("Decrypting key:\t\t");
   Serial.println(performTest(&settings, dec, validityBase, 0) ? "Pass" : "Fail");
@@ -122,7 +122,7 @@ void setup() {
 
 /* Try to use pointers whenever you can. It's really memory-consuming */
 bool performTest(settingsManager* set, String test, uint32_t t, uint8_t code) {
-  return (set->validateKey(test, t) == code);
+  return (set->verifyKey(test, t) == code);
 }
 
 void loop() {}

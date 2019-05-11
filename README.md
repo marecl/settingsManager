@@ -25,3 +25,8 @@ It's meant to be an universal, secure toolbox.
 * saveToSPIFFS - saving and loading settings
 * setUpAP - configure Access Point
 * updateServerConfiguration - how to configure default HTTP update server
+
+## Known issues
+* Cookie auth works best with Firefox
+* encryptKey takes values >=1 because of how key verification works
+* Using a function without configuring it (or loading settings) may cause crash
