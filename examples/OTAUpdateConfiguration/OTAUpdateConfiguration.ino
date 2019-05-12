@@ -22,7 +22,7 @@ void setup() {
   if (settings.beginSTA()) {
     Serial.print("Connected to ");
     Serial.println(settings.ssid());
-    Serial.print(WiFi.localIP());
+    Serial.println(WiFi.localIP());
   } else {
     Serial.println("Unable to connect to WiFi\r\nRebooting");
     delay(1000);
