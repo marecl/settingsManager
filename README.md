@@ -30,3 +30,4 @@ It's meant to be an universal, secure toolbox.
 * Cookie auth works best with Firefox
 * encryptKey takes values >=1 because of how key verification works
 * Using a function without configuring it (or loading settings) may cause crash
+* Requires ArduinoJson v5
