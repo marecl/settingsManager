@@ -23,28 +23,45 @@
 
 class settingsManager {
   public:
+    /* File name to store settings */
     settingsManager(const char* = NULL);
     ~settingsManager();
     void save();
     bool load();
+
+    /* SSID, password */
     void configSTA(const char*, const char* = NULL);
     void configAP(const char*, const char* = NULL);
+
+    /* SSID */
     void ssid(const char*);
     void ssidAP(const char*);
+
+    /* IP addresses */
     void configIP(IPAddress, IPAddress, IPAddress);
     void configIP(const char*, const char*, const char*);
     void useDHCP(bool);
     bool useDHCP();
     void name(const char*);
+    /* Username, password */
     void configUser(const char*, const char*);
     bool authenticate(const char*, const char*);
+
     bool beginSTA();
     bool beginAP();
+
+    /* Direct NTP address. Pools are not tested */
     void ntpServer(const char*);
+
+    /* Server, update service, path */
     void configUpdateServer(ESP8266WebServer*, ESP8266HTTPUpdateServer*, const char*);
+
     void beginOTA(uint16_t = 8266);
     bool webAuthenticate(ESP8266WebServer*);
+
+    /* Username, password, file to remove from SPIFFS */
     bool remove(const char*, const char*, const char*);
+
     IPAddress localIP();
     IPAddress gatewayIP();
     IPAddress subnetMask();
@@ -57,9 +74,17 @@ class settingsManager {
     uint32_t lastUpdate;
     int8_t timezone;
     uint16_t readInterval;
+
+    /* Decrypted key, canary */
     uint8_t verifyKey(String, uint32_t);
+
+    /* Encrypted key, canary */
     uint8_t verifyEncryptedKey(String, uint32_t);
+
+    /* Canary */
     String encryptKey(uint32_t);
+
+    /* Encrypted key */
     String decryptKey(String);
     uint32_t tokenLifespan;
 
@@ -88,6 +113,7 @@ class settingsManager {
     }
 
 #ifdef DEBUG_INSECURE
+    /* Pointer to Serial */
     void serialDebug(HardwareSerial*);
     void printConfigFile();
     void printConfig();

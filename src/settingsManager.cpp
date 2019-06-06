@@ -10,6 +10,9 @@ settingsManager::settingsManager(const char* _f) {
   this->_pwd = new char[16];
   this->_ntp = new char[32];
   this->_file = new char[32];
+#ifdef DEBUG_INSECURE
+  this->_debug = NULL;
+#endif
   if (_f == NULL) memset(this->_file, 0, 32);
   else this->setField(this->_file, _f, 32);
   this->_dhcp = true;
@@ -18,11 +21,7 @@ settingsManager::settingsManager(const char* _f) {
   this->timezone = 0;
   this->readInterval = 5;
   this->tokenLifespan = 600;
-#ifdef DEBUG_INSECURE
-  this->_debug = NULL;
-#endif
 }
-
 
 settingsManager::~settingsManager() {
   delete[] _name;
@@ -48,8 +47,7 @@ void settingsManager::ntpServer(const char* _ntp) {
 }
 
 void settingsManager::save() {
-  if (this->_file[0] == 0) return;
-  SPIFFS.remove(this->_file);
+  if (this->_file == NULL) return;
   fs::File _toSave = SPIFFS.open(this->_file, "w");
   _toSave.print(F("{\"SN\":\""));
   _toSave.print(this->_name);
@@ -140,37 +138,40 @@ bool settingsManager::load() {
   this->_print(F("Found file"));
 #endif
   fs::File _toSave = SPIFFS.open(this->_file, "r");
-  //Longest config i could create
-  StaticJsonBuffer<800> _ld;
-  JsonObject& _data = _ld.parseObject(_toSave);
-  _toSave.close();
-  if (!_data.success()) {
+  //(about the) Longest config i could create
+  StaticJsonDocument<800> _ld;
+
+  DeserializationError err = deserializeJson(_ld, _toSave);
+
+  if (err || !_toSave) {
 #ifdef DEBUG_INSECURE
     this->_print(F("Load error"));
 #endif
+    _toSave.close();
     return false;
   }
 
-  this->setField(this->_name, _data["SN"], 32);
-  this->setField(this->_user, _data["SL"], 16);
-  this->setField(this->_pwd, _data["SPL"], 16);
-  this->setField(this->_ssid, _data["OS"], 32);
-  this->setField(this->_pass, _data["OP"], 32);
-  this->setField(this->_ssidap, _data["SS"], 32);
-  this->setField(this->_passap, _data["SPA"], 32);
-  this->_ip = stringToIP(_data["OI"]);
-  this->_gw = stringToIP(_data["OG"]);
-  this->_mask = stringToIP(_data["OM"]);
-  this->_dhcp = _data["OD"].as<bool>();
-  this->useNTP = _data["UN"].as<bool>();
-  this->setField(this->_ntp, _data["NS"], 32);
-  this->lastUpdate = _data["LU"].as<uint32_t>();
-  this->timezone = _data["TZ"].as<int8_t>();
-  this->readInterval = _data["RI"].as<uint16_t>();
-  this->tokenLifespan = _data["TL"].as<uint16_t>();
+  this->setField(this->_name, _ld["SN"], 32);
+  this->setField(this->_user, _ld["SL"], 16);
+  this->setField(this->_pwd, _ld["SPL"], 16);
+  this->setField(this->_ssid, _ld["OS"], 32);
+  this->setField(this->_pass, _ld["OP"], 32);
+  this->setField(this->_ssidap, _ld["SS"], 32);
+  this->setField(this->_passap, _ld["SPA"], 32);
+  this->_ip = stringToIP(_ld["OI"]);
+  this->_gw = stringToIP(_ld["OG"]);
+  this->_mask = stringToIP(_ld["OM"]);
+  this->_dhcp = _ld["OD"];
+  this->useNTP = _ld["UN"];
+  this->setField(this->_ntp, _ld["NS"], 32);
+  this->lastUpdate = _ld["LU"];
+  this->timezone = _ld["TZ"];
+  this->readInterval = _ld["RI"];
+  this->tokenLifespan = _ld["TL"];
 #ifdef DEBUG_INSECURE
   this->_print(F("Loaded successfully"));
 #endif
+  _toSave.close();
   return true;
 }
 
@@ -224,9 +225,9 @@ void settingsManager::printConfig() {
   this->_debug->print(this->lastUpdate);
   this->_debug->print(F(",\"TZ\":"));
   this->_debug->print(this->timezone);
-  this->_debug->print(F("\",\"RI\":"));
+  this->_debug->print(F(",\"RI\":"));
   this->_debug->print(this->readInterval);
-  this->_debug->print(F("\",\"TL\":"));
+  this->_debug->print(F(",\"TL\":"));
   this->_debug->print(this->tokenLifespan);
   this->_debug->print(F("}\r\n"));
   return void();
