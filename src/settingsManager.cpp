@@ -476,10 +476,25 @@ void settingsManager::setField(char* _dest, const char* _src, uint8_t _size) {
   6 - no input
 */
 
-/* todo: rewrite verification using indexOf */
+uint16_t settingsManager::keyLength() {
+  /*
+    6 characters for device ID
+    4 special characters (3 separators + null terminator)
+    2*10 characters for max uint32_t string length
+  */
+  return 6 + 4 + 2 * 10 + strlen(this->_name);
+}
+
 
 uint8_t settingsManager::verifyEncryptedKey(String key, uint32_t time) {
   return this->verifyKey(this->decryptKey(key), time);
+}
+
+int8_t settingsManager::findChar(String s, uint8_t pos, char c) {
+  uint8_t l = pos + 1;
+  while (s[l] != c && s[l] != NULL) l++;
+  if (s[l] == c) return l;
+  else return -1;
 }
 
 uint8_t settingsManager::verifyKey(String key, uint32_t time) {
@@ -494,10 +509,20 @@ uint8_t settingsManager::verifyKey(String key, uint32_t time) {
     if (key[a] < 33 || key[a] > 126) return 1;
 
   uint8_t start = 0;
-  uint8_t end = 0;
+  int8_t end = 0;
+
+  /* Validating chip ID */
+  end = findChar(key, end, '=');
+  if (end == -1) return 4;
+#ifdef DEBUG_INSECURE
+  this->_print(F("\t*CHIP ID: "), key.substring(start, end).c_str());
+#endif
+  if (key.substring(start, end) != String(ESP.getChipId(), HEX)) return 4;
 
   /* Validating name */
-  while (key[++end] != '+');
+  start = end + 1;
+  end = findChar(key, end, '+');
+  if (end == -1) return 4;
 #ifdef DEBUG_INSECURE
   this->_print(F("\t*NAME: "), key.substring(start, end).c_str());
 #endif
@@ -505,29 +530,23 @@ uint8_t settingsManager::verifyKey(String key, uint32_t time) {
   if (key.substring(start, end) != String(this->_name)) return 3;
 
   /* Extracting timestamp */
-  start = ++end;
-  do {
-    if (key[end] < 48 || key[end] > 57) return 2;
-  } while (key[++end] != '+');
+  start = end + 1;
+  end = findChar(key, end, '+');
+  if (end == -1) return 2;
+  for (uint8_t a = start; a < end; a++)
+    if (key[a] < '0' || key[a] > '9') return 2;
   const uint32_t tst = strtoul(key.substring(start, end).c_str(), NULL, 0);
 #ifdef DEBUG_INSECURE
   this->_print(F("\t*TIMESTAMP: "), String(tst).c_str());
 #endif
   if (tst == 0) return 2;
 
-  /* Validating chip ID */
-  start = ++end;
-  while (key[++end] != '+');
-#ifdef DEBUG_INSECURE
-  this->_print(F("\t*CHIP ID: "), key.substring(start, end).c_str());
-#endif
-  if (key.substring(start, end) != String(ESP.getChipId(), HEX)) return 4;
-
   /* Validating token's lifespan */
-  start = ++end;
-  do {
-    if (key[end] < 48 || key[end] > 57) return 2;
-  } while (key[++end] != '\x00');
+  start = end + 1;
+  end = findChar(key, end, NULL);
+  if (end == -1) return 2;
+  for (uint8_t a = start; a < end; a++)
+    if (key[a] < '0' || key[a] > '9') return 2;
 #ifdef DEBUG_INSECURE
   this->_print(F("\t*LIFESPAN [s]: "), key.substring(start, end).c_str());
 #endif
@@ -537,10 +556,12 @@ uint8_t settingsManager::verifyKey(String key, uint32_t time) {
   return 0;
 }
 
+/* AVR? https://github.com/ricaun/ArduinoUniqueID */
+
 String settingsManager::encryptKey(uint32_t time) {
-  String temp = String(this->_name);
+  String temp = String(ESP.getChipId(), HEX);
+  temp += "=" + String(this->_name);
   temp += "+" + String(time);
-  temp += "+" + String(ESP.getChipId(), HEX);
   temp += "+" + String(this->tokenLifespan);
   String temp2 = this->generateKey(temp.length());
   String out = "";

@@ -77,6 +77,9 @@ class settingsManager {
 
     /* Decrypted key, canary */
     uint8_t verifyKey(String, uint32_t);
+	
+	/* Key length for buffer */
+    uint16_t keyLength();
 
     /* Encrypted key, canary */
     uint8_t verifyEncryptedKey(String, uint32_t);
@@ -120,6 +123,7 @@ class settingsManager {
 #endif
 
   protected:
+    int8_t findChar(String, uint8_t, char);
     String generateKey(uint8_t);
     char encryptChar(char, char);
     char decryptChar(char, char);
