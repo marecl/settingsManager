@@ -138,6 +138,7 @@ bool settingsManager::load() {
   this->_print(F("Found file"));
 #endif
   fs::File _toSave = SPIFFS.open(this->_file, "r");
+
   //(about the) Longest config i could create
   StaticJsonDocument<800> _ld;
 
@@ -492,7 +493,7 @@ uint8_t settingsManager::verifyEncryptedKey(String key, uint32_t time) {
 
 int8_t settingsManager::findChar(String s, uint8_t pos, char c) {
   uint8_t l = pos + 1;
-  while (s[l] != c && s[l] != NULL) l++;
+  while (s[l] != c && s[l] != 0x00) l++;
   if (s[l] == c) return l;
   else return -1;
 }
@@ -543,7 +544,7 @@ uint8_t settingsManager::verifyKey(String key, uint32_t time) {
 
   /* Validating token's lifespan */
   start = end + 1;
-  end = findChar(key, end, NULL);
+  end = findChar(key, end, 0x00);
   if (end == -1) return 2;
   for (uint8_t a = start; a < end; a++)
     if (key[a] < '0' || key[a] > '9') return 2;

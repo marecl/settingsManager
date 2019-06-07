@@ -77,8 +77,8 @@ class settingsManager {
 
     /* Decrypted key, canary */
     uint8_t verifyKey(String, uint32_t);
-	
-	/* Key length for buffer */
+
+    /* Key length for buffer */
     uint16_t keyLength();
 
     /* Encrypted key, canary */
