@@ -1,6 +1,3 @@
-#ifndef SETTINGSMANAHER_H
-#define SETTINGSMANAHER_H
-
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
@@ -9,6 +6,11 @@
 #include <ESP8266HTTPUpdateServer.h>
 #define FS_NO_GLOBALS
 #include "FS.h"
+
+#if ARDUINOJSON_VERSION_MAJOR == 5
+
+#ifndef SETTINGSMANAHER_H
+#define SETTINGSMANAHER_H
 
 /*
   Library which is made to hold all settings of Temperature Station
@@ -78,6 +80,9 @@ class settingsManager {
     /* Decrypted key, canary */
     uint8_t verifyKey(String, uint32_t);
 
+    /* Key length for buffer */
+    uint16_t keyLength();
+
     /* Encrypted key, canary */
     uint8_t verifyEncryptedKey(String, uint32_t);
 
@@ -120,6 +125,7 @@ class settingsManager {
 #endif
 
   protected:
+    int8_t findChar(String, uint8_t, char);
     String generateKey(uint8_t);
     char encryptChar(char, char);
     char decryptChar(char, char);
@@ -142,4 +148,8 @@ class settingsManager {
     HardwareSerial *_debug;
 #endif
 };
+#endif
+
+#else
+#error "ArduinoJson v5 is rquired for this version of settingsManager"
 #endif

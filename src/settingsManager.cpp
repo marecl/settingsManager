@@ -124,7 +124,6 @@ void settingsManager::beginOTA(uint16_t _p) {
 }
 
 bool settingsManager::load() {
-  if (this->_file[0] == 0) return false;
 #ifdef DEBUG_INSECURE
   this->_print(F("Config file: "), this->_file);
 #endif
@@ -138,36 +137,34 @@ bool settingsManager::load() {
   this->_print(F("Found file"));
 #endif
   fs::File _toSave = SPIFFS.open(this->_file, "r");
-  //(about the) Longest config i could create
-  StaticJsonDocument<800> _ld;
-
-  DeserializationError err = deserializeJson(_ld, _toSave);
-
-  if (err || !_toSave) {
+  //Longest config i could create
+  StaticJsonBuffer<675> _ld;
+  JsonObject& _data = _ld.parseObject(_toSave);
+  _toSave.close();
+  if (!_data.success()) {
 #ifdef DEBUG_INSECURE
     this->_print(F("Load error"));
 #endif
-    _toSave.close();
     return false;
   }
 
-  this->setField(this->_name, _ld["SN"], 32);
-  this->setField(this->_user, _ld["SL"], 16);
-  this->setField(this->_pwd, _ld["SPL"], 16);
-  this->setField(this->_ssid, _ld["OS"], 32);
-  this->setField(this->_pass, _ld["OP"], 32);
-  this->setField(this->_ssidap, _ld["SS"], 32);
-  this->setField(this->_passap, _ld["SPA"], 32);
-  this->_ip = stringToIP(_ld["OI"]);
-  this->_gw = stringToIP(_ld["OG"]);
-  this->_mask = stringToIP(_ld["OM"]);
-  this->_dhcp = _ld["OD"];
-  this->useNTP = _ld["UN"];
-  this->setField(this->_ntp, _ld["NS"], 32);
-  this->lastUpdate = _ld["LU"];
-  this->timezone = _ld["TZ"];
-  this->readInterval = _ld["RI"];
-  this->tokenLifespan = _ld["TL"];
+  this->setField(this->_name, _data["SN"], 32);
+  this->setField(this->_user, _data["SL"], 16);
+  this->setField(this->_pwd, _data["SPL"], 16);
+  this->setField(this->_ssid, _data["OS"], 32);
+  this->setField(this->_pass, _data["OP"], 32);
+  this->setField(this->_ssidap, _data["SS"], 32);
+  this->setField(this->_passap, _data["SPA"], 32);
+  this->_ip = stringToIP(_data["OI"]);
+  this->_gw = stringToIP(_data["OG"]);
+  this->_mask = stringToIP(_data["OM"]);
+  this->_dhcp = _data["OD"];
+  this->useNTP = _data["UN"];
+  this->setField(this->_ntp, _data["NS"], 32);
+  this->lastUpdate = _data["LU"];
+  this->timezone = _data["TZ"];
+  this->readInterval = _data["RI"];
+  this->tokenLifespan = _data["TL"];
 #ifdef DEBUG_INSECURE
   this->_print(F("Loaded successfully"));
 #endif
@@ -476,10 +473,25 @@ void settingsManager::setField(char* _dest, const char* _src, uint8_t _size) {
   6 - no input
 */
 
-/* todo: rewrite verification using indexOf */
+uint16_t settingsManager::keyLength() {
+  /*
+    6 characters for device ID
+    4 special characters (3 separators + null terminator)
+    2*10 characters for max uint32_t string length
+  */
+  return 6 + 4 + 2 * 10 + strlen(this->_name);
+}
+
 
 uint8_t settingsManager::verifyEncryptedKey(String key, uint32_t time) {
   return this->verifyKey(this->decryptKey(key), time);
+}
+
+int8_t settingsManager::findChar(String s, uint8_t pos, char c) {
+  uint8_t l = pos + 1;
+  while (s[l] != c && s[l] != 0x00) l++;
+  if (s[l] == c) return l;
+  else return -1;
 }
 
 uint8_t settingsManager::verifyKey(String key, uint32_t time) {
@@ -494,10 +506,20 @@ uint8_t settingsManager::verifyKey(String key, uint32_t time) {
     if (key[a] < 33 || key[a] > 126) return 1;
 
   uint8_t start = 0;
-  uint8_t end = 0;
+  int8_t end = 0;
+
+  /* Validating chip ID */
+  end = findChar(key, end, '=');
+  if (end == -1) return 4;
+#ifdef DEBUG_INSECURE
+  this->_print(F("\t*CHIP ID: "), key.substring(start, end).c_str());
+#endif
+  if (key.substring(start, end) != String(ESP.getChipId(), HEX)) return 4;
 
   /* Validating name */
-  while (key[++end] != '+');
+  start = end + 1;
+  end = findChar(key, end, '+');
+  if (end == -1) return 4;
 #ifdef DEBUG_INSECURE
   this->_print(F("\t*NAME: "), key.substring(start, end).c_str());
 #endif
@@ -505,29 +527,23 @@ uint8_t settingsManager::verifyKey(String key, uint32_t time) {
   if (key.substring(start, end) != String(this->_name)) return 3;
 
   /* Extracting timestamp */
-  start = ++end;
-  do {
-    if (key[end] < 48 || key[end] > 57) return 2;
-  } while (key[++end] != '+');
+  start = end + 1;
+  end = findChar(key, end, '+');
+  if (end == -1) return 2;
+  for (uint8_t a = start; a < end; a++)
+    if (key[a] < '0' || key[a] > '9') return 2;
   const uint32_t tst = strtoul(key.substring(start, end).c_str(), NULL, 0);
 #ifdef DEBUG_INSECURE
   this->_print(F("\t*TIMESTAMP: "), String(tst).c_str());
 #endif
   if (tst == 0) return 2;
 
-  /* Validating chip ID */
-  start = ++end;
-  while (key[++end] != '+');
-#ifdef DEBUG_INSECURE
-  this->_print(F("\t*CHIP ID: "), key.substring(start, end).c_str());
-#endif
-  if (key.substring(start, end) != String(ESP.getChipId(), HEX)) return 4;
-
   /* Validating token's lifespan */
-  start = ++end;
-  do {
-    if (key[end] < 48 || key[end] > 57) return 2;
-  } while (key[++end] != '\x00');
+  start = end + 1;
+  end = findChar(key, end, 0x00);
+  if (end == -1) return 2;
+  for (uint8_t a = start; a < end; a++)
+    if (key[a] < '0' || key[a] > '9') return 2;
 #ifdef DEBUG_INSECURE
   this->_print(F("\t*LIFESPAN [s]: "), key.substring(start, end).c_str());
 #endif
@@ -537,10 +553,12 @@ uint8_t settingsManager::verifyKey(String key, uint32_t time) {
   return 0;
 }
 
+/* AVR? https://github.com/ricaun/ArduinoUniqueID */
+
 String settingsManager::encryptKey(uint32_t time) {
-  String temp = String(this->_name);
+  String temp = String(ESP.getChipId(), HEX);
+  temp += "=" + String(this->_name);
   temp += "+" + String(time);
-  temp += "+" + String(ESP.getChipId(), HEX);
   temp += "+" + String(this->tokenLifespan);
   String temp2 = this->generateKey(temp.length());
   String out = "";

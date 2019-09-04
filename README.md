@@ -1,4 +1,7 @@
 # settingsManager
+
+This is legacy version to use with ArduinoJson v5!  
+
 Handler for ESP8266 settings such as WiFi, NTP and update server.  
 It's meant to be an universal, secure toolbox.  
 
