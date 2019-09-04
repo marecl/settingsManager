@@ -23,8 +23,9 @@ String _expiry;
 settingsManager settings;
 
 void setup() {
+  delay(1000);
   Serial.begin(115200);
-  Serial.println("Encryption test");
+  Serial.println("\r\nEncryption test");
 
   /* Configuring settings */
 #ifdef DEBUG_INSECURE
@@ -49,80 +50,86 @@ void setup() {
   Serial.println(settings.verifyEncryptedKey(enc, validityBase) == 0 ? "Pass" : "Fail");
 
   Serial.print("Decrypting key:\t\t");
-  Serial.println(performTest(&settings, dec, validityBase, 0) ? "Pass" : "Fail");
+  performTest(&settings, dec, validityBase, 0);
 
   String test = dec;
   test[test.length() - 2] = ' ';
   Serial.print("White characters:\t");
-  Serial.println(performTest(&settings, test, validityBase, 1) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 1);
 
   Serial.print("No timestamp:\t\t");
-  test = _name + String("++") + _chipID + String("+") + _expiry;
-  Serial.println(performTest(&settings, test, validityBase, 2) ? "Pass" : "Fail");
+  test = _chipID + '=' + _name + String("++") + _expiry;
+  performTest(&settings, test, validityBase, 2);
 
-  test = _name + String("+") + String(validityBase) + String("+") + _chipID + String("+") + _expiry;
-  test[strlen(_name) + 2] = 'a';
+  test = _chipID + '=' + _name + '+' + String(validityBase) + '+' + _expiry;
+  test[strlen(_name) + 8] = 'a';
   Serial.print("Conversion error:\t");
-  Serial.println(performTest(&settings, test, validityBase, 2) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 2);
 
-  test = _name + String("+") + String(validityBase) + String("+") + _chipID + String("+") + _expiry;
+  test = _chipID + '=' + _name + '+' + String(validityBase) + '+' + ' + ' + _expiry;
   test += 'a';
   Serial.print("Conversion error 2:\t");
-  Serial.println(performTest(&settings, test, validityBase, 2) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 2);
 
-  test = _name + String("+") + String(validityBase) + String("+") + _chipID + String("+a") + _expiry;
+  test = _chipID + '=' + _name + '+' + String(validityBase) + String("+a") + _expiry;
   test += 'a';
   Serial.print("Conversion error 3:\t");
-  Serial.println(performTest(&settings, test, validityBase, 2) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 2);
 
-  test = _name + String("+") + String(validityBase) + String("+") + _chipID + String("+");
+  test = _chipID + '=' + _name + '+' + String(validityBase) + '+';
   Serial.print("No token lifespan:\t");
-  Serial.println(performTest(&settings, test, validityBase, 2) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 2);
 
-  test = _name + String("+") + String(validityBase) + String("+") + _chipID + String("+") + _expiry;
+  test = _chipID + '=' + _name + '+' + String(validityBase) + '+' + _expiry;
   test[strlen(_name) - 1] = '!';
   Serial.print("Invalid name:\t\t");
-  Serial.println(performTest(&settings, test, validityBase, 3) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 3);
 
-  test = String(_name).substring(1) + String("+") + String(validityBase) + String("+") + _chipID + String("+") + _expiry;
+  test = _chipID + '=' + String(_name).substring(1) + '+' + String(validityBase) + '+' + _expiry;
   Serial.print("Invalid name length:\t");
-  Serial.println(performTest(&settings, test, validityBase, 3) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 3);
 
-  test = String("+") + String(validityBase) + String("+") + _chipID + String("+") + _expiry;
+  test = _chipID + '=' + '+' + String(validityBase) + '+' + _expiry;
   Serial.print("No name:\t\t");
-  Serial.println(performTest(&settings, test, validityBase, 3) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 3);
 
-  test = _name + String("+") + String(validityBase) + String("+") + _chipID.substring(1) + String("+") + _expiry;
-  Serial.print("Invalid chip id length:\t");
-  Serial.println(performTest(&settings, test, validityBase, 4) ? "Pass" : "Fail");
+  test = _chipID.substring(1) + '=' + _name + '+' + String(validityBase) + '+' + _expiry;
+  Serial.print("Invalid chip id len:\t");
+  performTest(&settings, test, validityBase, 4);
 
-  test = _name + String("+") + String(validityBase) + String("+FFFFF+") + _expiry;
+  test = String("DEADBE=") + _name + '+' + String(validityBase) + '+' + _expiry;
   Serial.print("Invalid chip id:\t");
-  Serial.println(performTest(&settings, test, validityBase, 4) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 4);
 
-  test = _name + String("+") + String(validityBase) + String("+z") + _chipID.substring(1) + String("+") + _expiry;
+  test = 'z' + _chipID.substring(1) + '=' + _name + '+' + String(validityBase) + String("+z") + '+' + _expiry;
   Serial.print("Invalid chip id 2:\t");
-  Serial.println(performTest(&settings, test, validityBase, 4) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 4);
 
-  test = _name + String("+") + String(validityBase) + String("+") + _chipID.substring(0, _chipID.length() - 2) + String("A+") + _expiry;
+  test = _chipID.substring(0, _chipID.length() - 2) + '=' + _name + '+' + String(validityBase) + String("+A+") + _expiry;
   Serial.print("Invalid chip id 3:\t");
-  Serial.println(performTest(&settings, test, validityBase, 4) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 4);
 
-  test = _name + String("+") + String(validityBase) + String("++") + _expiry;
+  test = String("=") + _name + '+' + String(validityBase) + '+' + _expiry;
   Serial.print("No chip id:\t\t");
-  Serial.println(performTest(&settings, test, validityBase, 4) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase, 4);
 
   test = dec;
   Serial.print("Invalid time:\t\t");
-  Serial.println(performTest(&settings, test, validityBase + (settings.tokenLifespan * 2), 5) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase + (settings.tokenLifespan * 2), 5);
 
   Serial.print("Invalid time 2:\t\t");
-  Serial.println(performTest(&settings, test, validityBase - (settings.tokenLifespan * 2), 5) ? "Pass" : "Fail");
+  performTest(&settings, test, validityBase - (settings.tokenLifespan * 2), 5);
 }
 
-/* Try to use pointers whenever you can. It's really memory-consuming */
-bool performTest(settingsManager* set, String test, uint32_t t, uint8_t code) {
-  return (set->verifyKey(test, t) == code);
+/* Try to use pointers whenever you can. It's really memory - consuming */
+bool performTest(settingsManager * set, String test, uint32_t t, uint8_t code) {
+  uint8_t ret = set->verifyKey(test, t);
+  if (ret == code) {
+    Serial.println("Pass (" + String(ret) + ")");
+    return true;
+  }
+  Serial.println("Fail (" + String(ret) + ")");
+  return false;
 }
 
 void loop() {}

@@ -40,3 +40,4 @@ verifyEncryptedKey	KEYWORD2
 encryptKey	KEYWORD2
 decryptKey	KEYWORD2
 tokenLifespan	KEYWORD2
+keyLength	KEYWORD2

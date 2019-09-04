@@ -28,6 +28,9 @@ void setup() {
   /* Creating an object with filename allows it to be saved */
   Serial.println("Creating settings object");
   settingsManager settings("/testFile.txt");
+#ifdef DEBUG_INSECURE
+  settings.serialDebug(&Serial);
+#endif
   Serial.print("Setting name ");
   settings.name(_name);
   Serial.println(settings.name());
@@ -36,6 +39,9 @@ void setup() {
   /* Load new settings */
   Serial.println("Creating new settings object");
   settingsManager settings2("/testFile.txt");
+#ifdef DEBUG_INSECURE
+  settings2.serialDebug(&Serial);
+#endif
   Serial.println("Loading settings...");
   bool loadStatus = settings2.load();
   if (loadStatus) {
